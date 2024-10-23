@@ -1,0 +1,150 @@
+``` r
+library(tidyverse)
+library(GGally)
+library(visdat)
+library(janitor)
+
+library(ggfortify) ## PCA Plots
+
+library(glmnet) ## Penalized Regression
+
+house_prices <- read_csv("./cook_county_train_val.csv")
+
+# Drop meaningless variables
+house_prices <- select(house_prices, -"...1", -"PIN", -"Description")
+
+house_prices <- house_prices %>% clean_names()
+
+house_prices <- house_prices %>%
+  mutate_at(vars(property_class,
+                 neighborhood_code,
+                 town_code,
+                 wall_material,
+                 roof_material,
+                 basement,
+                 basement_finish,
+                 central_heating,
+                 other_heating,
+                 central_air,
+                 attic_type,
+                 attic_finish,
+                 design_plan,
+                 cathedral_ceiling,
+                 construction_quality,
+                 site_desirability,
+                 garage_1_material,
+                 garage_1_attachment,
+                 garage_1_area,
+                 garage_2_material,
+                 garage_2_attachment,
+                 garage_2_area,
+                 other_improvements,
+                 porch,
+                 repair_condition,
+                 multi_code,
+                 census_tract,
+                 multi_property_indicator,
+                 modeling_group,
+                 use,
+                 o_hare_noise,
+                 floodplain,
+                 road_proximity,
+                 pure_market_filter,
+                 garage_indicator,
+                 neigborhood_code_mapping,
+                 town_and_neighborhood),
+            factor)
+
+# These columns only have one level per factor, so are not useful for modeling
+house_prices <- house_prices %>%
+  select(-use, -modeling_group)
+
+# These are duplicates or modifications of other columns
+house_prices <- house_prices %>%
+  select(-neigborhood_code_mapping, town_and_neighborhood)
+
+house_prices %>%
+  select(-description, -pin) %>%
+  ggpairs(columns = 1:6)
+
+house_prices %>%
+  sample_n(5000) %>%
+  vis_miss(warn_large_data = FALSE)
+
+summary(house_prices) %>%
+  knitr::kable()
+
+# Levels per factor
+sapply(house_prices[sapply(house_prices, is.factor)], nlevels)
+
+
+baseline <- lm(sale_price ~ building_square_feet, data = house_prices)
+
+summary(baseline)
+
+null_model <- lm(sale_price ~ 1, data = house_prices)
+full_model <- lm(sale_price ~ ., data = house_prices)
+
+summary(full_model)
+
+
+full <- speedglm::speedlm(sale_price ~ . , data = house_prices)
+
+```
+
+# Subset Selection
+
+``` {r subset-selection}
+library(MASS)
+
+model.full <- stepAIC(null_model, direction = "forward", scope = ~ .)
+
+```
+
+# L_1/L_2 Regularized Regression
+
+``` {r ridge-lasso}
+input_matrix <- model.matrix(sale_price ~ ., data = house_prices)
+
+lasso <- glmnet(x = input_matrix,
+                y = house_prices$sale_price,
+                alpha = 1)
+
+
+plot(lasso)
+
+coef(lasso, s = 0.1)
+
+ridge <- glmnet(x = input_matrix,
+                y = house_prices$sale_price,
+                alpha = 0)
+
+plot(ridge)
+
+coef(ridge, s = 0.1)
+```
+
+
+# PCA
+
+``` {r pca}
+pca <- prcomp(input_matrix)
+
+plot(pca)
+
+autoplot(pca,
+         data = house_prices,
+         color = "property_class",
+         loadings = TRUE,
+         loadings.color = "blue",
+         loadings.label = TRUE,
+         loadings.label.size = 5)
+
+components <- pca[["x"]]
+
+components <- data.frame(components)
+
+components$PC3 <- -components$PC3
+
+components$PC2 <- -components$PC2
+```
