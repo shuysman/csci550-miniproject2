@@ -61,7 +61,7 @@ house_prices <- house_prices %>%
 
 # These are duplicates or modifications of other columns
 house_prices <- house_prices %>%
-  select(-neigborhood_code_mapping, town_and_neighborhood)
+  select(-neigborhood_code_mapping, -town_code, -neighborhood_code)
 
 house_prices %>%
   select(-description, -pin) %>%
