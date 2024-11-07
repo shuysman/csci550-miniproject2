@@ -52,7 +52,8 @@ house_prices <- house_prices %>%
                  pure_market_filter,
                  garage_indicator,
                  neigborhood_code_mapping,
-                 town_and_neighborhood),
+                 town_and_neighborhood,
+                 sale_month_of_year),
             factor)
 
 # These columns only have one level per factor, so are not useful for modeling
@@ -63,10 +64,37 @@ house_prices <- house_prices %>%
 house_prices <- house_prices %>%
   select(-neigborhood_code_mapping, -town_code, -neighborhood_code)
 
-house_prices %>%
-  select(-description, -pin) %>%
-  ggpairs(columns = 1:6)
+# Documentation says other improvements is not clean enough to be useful
+house_prices <- house_prices %>%
+  select(-other_improvements)
 
+# Clean sale prices = 1
+house_prices <- house_prices %>%
+  filter(sale_price > 1)
+
+# Codebook specifies that houses with missing age are set to 10.  Since we can't tell houses with missing age vs houses with true age 10, we decided to drop data points with age == 10.
+house_prices <- house_prices %>%
+  filter(age != 10)
+
+# land_square_feet and lot_size are the same so we drop one
+house_prices <- house_prices %>%
+  select(-land_square_feet)
+
+# there are lots of different fields treating date differently, for example sale month of year, sale half year, etc.  To cut down on redundant predictors, we are keeping sale year and sale month of year, as these fields contain the most information
+house_prices <- house_prices %>%
+  select(-sale_quarter, -sale_half_year, -sale_quarter_of_year, -sale_half_of_year)
+
+# deed number is a unique ID that appears randomly assigned
+house_prices <- house_prices %>%
+  select(-deed_no)
+
+# age_decade is just age / 10
+house_prices <- house_prices %>%
+  select(-age_decade)
+```
+
+
+``` r
 house_prices %>%
   sample_n(5000) %>%
   vis_miss(warn_large_data = FALSE)
@@ -97,7 +125,7 @@ full <- speedglm::speedlm(sale_price ~ . , data = house_prices)
 ``` {r subset-selection}
 library(MASS)
 
-model.full <- stepAIC(null_model, direction = "forward", scope = ~ .)
+model.full <- stepAIC(null_model, direction = "forward", scope = sale_price ~ .)
 
 ```
 
