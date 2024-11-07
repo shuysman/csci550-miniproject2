@@ -91,6 +91,11 @@ house_prices <- house_prices %>%
 # age_decade is just age / 10
 house_prices <- house_prices %>%
   select(-age_decade)
+
+# lots of zeroes for estimate_land and estimate_building.  We are interested in how good of a predictor of sale prices these estimates are, so we are dropping observations where these are 0
+house_prices <- house_prices %>%
+  filter(estimate_land != 0, estimate_building != 0)
+
 ```
 
 
