@@ -138,22 +138,25 @@ model.full <- stepAIC(null_model, direction = "forward", scope = sale_price ~ .)
 ``` {r ridge-lasso}
 input_matrix <- model.matrix(sale_price ~ ., data = house_prices)
 
-lasso <- glmnet(x = input_matrix,
-                y = house_prices$sale_price,
-                alpha = 1)
+lasso.cv <- cv.glmnet(x = input_matrix,
+                      y = house_prices$sale_price,
+                      alpha = 1,
+                      nfolds = 5,
+                      parallel = TRUE)
 
+plot(lasso.cv)
 
-plot(lasso)
+coef(lasso.cv, s = "lambda.min")
 
-coef(lasso, s = 0.1)
+ridge.cv <- cv.glmnet(x = input_matrix,
+                      y = house_prices$sale_price,
+                      alpha = 0,
+                      nfolds = 5,
+                      parallel = TRUE)
 
-ridge <- glmnet(x = input_matrix,
-                y = house_prices$sale_price,
-                alpha = 0)
+plot(ridge.cv)
 
-plot(ridge)
-
-coef(ridge, s = 0.1)
+coef(ridge.cv, s = "lambda.min")
 ```
 
 
