@@ -15,47 +15,6 @@ house_prices <- select(house_prices, -"...1", -"PIN", -"Description")
 
 house_prices <- house_prices %>% clean_names()
 
-house_prices <- house_prices %>%
-  mutate_at(vars(property_class,
-                 neighborhood_code,
-                 town_code,
-                 wall_material,
-                 roof_material,
-                 basement,
-                 basement_finish,
-                 central_heating,
-                 other_heating,
-                 central_air,
-                 attic_type,
-                 attic_finish,
-                 design_plan,
-                 cathedral_ceiling,
-                 construction_quality,
-                 site_desirability,
-                 garage_1_material,
-                 garage_1_attachment,
-                 garage_1_area,
-                 garage_2_material,
-                 garage_2_attachment,
-                 garage_2_area,
-                 other_improvements,
-                 porch,
-                 repair_condition,
-                 multi_code,
-                 census_tract,
-                 multi_property_indicator,
-                 modeling_group,
-                 use,
-                 o_hare_noise,
-                 floodplain,
-                 road_proximity,
-                 pure_market_filter,
-                 garage_indicator,
-                 neigborhood_code_mapping,
-                 town_and_neighborhood,
-                 sale_month_of_year),
-            factor)
-
 # These columns only have one level per factor, so are not useful for modeling
 house_prices <- house_prices %>%
   select(-use, -modeling_group)
@@ -96,6 +55,46 @@ house_prices <- house_prices %>%
 house_prices <- house_prices %>%
   filter(estimate_land != 0, estimate_building != 0)
 
+
+# apartments ranges from 0 to 6, but there are no observations with 1 apartment.  We want to treat this variable as continuous, so we are transforming apartments = 0 to 1.  This means that an observation with 1 apartment is a free standing dwelling, 2+ apartments is an apartment complex.
+house_prices <- house_prices %>%
+  mutate(apartments = if_else(apartments == 0, 1, apartments))
+
+
+house_prices <- house_prices %>%
+  mutate_at(vars(property_class,
+                 wall_material,
+                 roof_material,
+                 basement,
+                 basement_finish,
+                 central_heating,
+                 other_heating,
+                 central_air,
+                 attic_type,
+                 attic_finish,
+                 design_plan,
+                 cathedral_ceiling,
+                 construction_quality,
+                 site_desirability,
+                 garage_1_material,
+                 garage_1_attachment,
+                 garage_1_area,
+                 garage_2_material,
+                 garage_2_attachment,
+                 garage_2_area,
+                 porch,
+                 repair_condition,
+                 multi_code,
+                 census_tract,
+                 multi_property_indicator,
+                 o_hare_noise,
+                 floodplain,
+                 road_proximity,
+                 pure_market_filter,
+                 garage_indicator,
+                 town_and_neighborhood,
+                 sale_month_of_year),
+            factor)
 ```
 
 
