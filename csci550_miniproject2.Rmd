@@ -1,12 +1,14 @@
-``` r
-library(tidyverse)
+```{r packages}
 library(GGally)
 library(visdat)
 library(janitor)
+library(corrplot)
 
 library(ggfortify) ## PCA Plots
-
 library(glmnet) ## Penalized Regression
+library(MASS)
+library(tidyverse)
+```
 
 house_prices <- read_csv("./cook_county_train_val.csv")
 
