@@ -10,10 +10,13 @@ library(glmnet) ## Penalized Regression
 
 house_prices <- read_csv("./cook_county_train_val.csv")
 
-# Drop meaningless variables
-house_prices <- select(house_prices, -"...1", -"PIN", -"Description")
+```{r load-data}
+house_prices <- read_csv("./cook_county_train_val.csv")
 
 house_prices <- house_prices %>% clean_names()
+
+# Drop meaningless variables
+house_prices <- house_prices %>% select(-x1, -pin, -description)
 
 # These columns only have one level per factor, so are not useful for modeling
 house_prices <- house_prices %>%
