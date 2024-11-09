@@ -10,8 +10,6 @@ library(MASS)
 library(tidyverse)
 ```
 
-house_prices <- read_csv("./cook_county_train_val.csv")
-
 ```{r load-data}
 house_prices <- read_csv("./cook_county_train_val.csv")
 
@@ -100,6 +98,24 @@ house_prices <- house_prices %>%
                  town_and_neighborhood,
                  sale_month_of_year),
             factor)
+
+input_matrix <- model.matrix(sale_price ~ -1 + ., data = house_prices)
+```
+
+```{r eda}
+house_prices %>%
+  select(-census_tract, -town_and_neighborhood) %>%
+  ggpairs()
+
+
+M <- cor(select_if(house_prices, is.numeric))
+corrplot(M)
+
+select_if(house_prices, is.numeric) %>%
+  ggpairs()
+
+select_if(house_prices, is.factor) %>%
+  ggpairs()
 ```
 
 
@@ -123,26 +139,16 @@ null_model <- lm(sale_price ~ 1, data = house_prices)
 full_model <- lm(sale_price ~ ., data = house_prices)
 
 summary(full_model)
-
-
-full <- speedglm::speedlm(sale_price ~ . , data = house_prices)
-
 ```
 
 # Subset Selection
-
 ``` {r subset-selection}
-library(MASS)
-
-model.full <- stepAIC(null_model, direction = "forward", scope = sale_price ~ .)
-
+step_fit <- stepAIC(null_model,  scope = list(lower = null_model, upper = full_model), direction = "forward")
 ```
 
 # L_1/L_2 Regularized Regression
 
 ``` {r ridge-lasso}
-input_matrix <- model.matrix(sale_price ~ ., data = house_prices)
-
 lasso.cv <- cv.glmnet(x = input_matrix,
                       y = house_prices$sale_price,
                       alpha = 1,
@@ -187,4 +193,11 @@ components <- data.frame(components)
 components$PC3 <- -components$PC3
 
 components$PC2 <- -components$PC2
+```
+
+```{r non-linear}
+ggplot(house_prices, aes(x = building_square_feet, y = sale_price)) +
+  geom_point()
+
+smooth <- smooth.spline(x = house_prices$building_square_feet, y = house_prices$sale_price, cv = F)
 ```
