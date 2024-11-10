@@ -106,7 +106,7 @@ house_prices <- house_prices %>%
 input_matrix <- model.matrix(sale_price ~ -1 + ., data = house_prices)
 ```
 
-```{r eda}
+```{r eda, eval = F}
 house_prices %>%
   select(-census_tract, -town_and_neighborhood) %>%
   ggpairs()
@@ -120,39 +120,48 @@ select_if(house_prices, is.numeric) %>%
 
 select_if(house_prices, is.factor) %>%
   ggpairs()
-```
-
-
-``` r
-house_prices %>%
-  sample_n(5000) %>%
-  vis_miss(warn_large_data = FALSE)
 
 summary(house_prices) %>%
   knitr::kable()
+```
 
-# Levels per factor
-sapply(house_prices[sapply(house_prices, is.factor)], nlevels)
 
+```{r linear-models}
 
 baseline <- lm(sale_price ~ building_square_feet, data = house_prices)
 
 summary(baseline)
 
 null_model <- lm(sale_price ~ 1, data = house_prices)
-full_model <- lm(sale_price ~ ., data = house_prices)
+```
 
+```{r full_model, eval = F}
+full_model <- lm(sale_price ~ ., data = house_prices)
+saveRDS(full_model, "full_model.RDS")
+```
+
+```{r full_model2}
+full_model <- readRDS("full_model.RDS")
 summary(full_model)
 ```
 
 # Subset Selection
-``` {r subset-selection}
-step_fit <- stepAIC(null_model,  scope = list(lower = null_model, upper = full_model), direction = "forward")
+``` {r subset-selection, eval = F}
+## Code below used to generate forward step fit
+step_fit <- stepAIC(null_model,  scope = list(lower = null_model, upper = full_model), direction = "forward", steps = 5)
+saveRDS(step_fit, "step_fit.RDS")
+```
+
+``` {r forward-selection-load}
+## Load cached step fit model
+step_fit <- readRDS("step_fit.RDS")
+
+summary(step_fit)
 ```
 
 # L_1/L_2 Regularized Regression
 
-``` {r ridge-lasso}
+``` {r ridge-lasso, cache = TRUE}
 lasso.cv <- cv.glmnet(x = input_matrix,
                       y = house_prices$sale_price,
                       alpha = 1,
@@ -161,7 +170,10 @@ lasso.cv <- cv.glmnet(x = input_matrix,
 
 plot(lasso.cv)
 
+plot(lasso.cv$glmnet.fit)
+
 coef(lasso.cv, s = "lambda.min")
+
 
 ridge.cv <- cv.glmnet(x = input_matrix,
                       y = house_prices$sale_price,
@@ -171,13 +183,15 @@ ridge.cv <- cv.glmnet(x = input_matrix,
 
 plot(ridge.cv)
 
+plot(ridge.cv$glmnet.fit)
+
 coef(ridge.cv, s = "lambda.min")
 ```
 
 
 # PCA
 
-``` {r pca}
+``` {r pca, cache = TRUE}
 pca <- prcomp(input_matrix)
 
 plot(pca)
