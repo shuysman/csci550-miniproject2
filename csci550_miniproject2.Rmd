@@ -191,7 +191,7 @@ coef(ridge.cv, s = "lambda.min")
 
 # PCA
 
-``` {r pca, cache = TRUE}
+``` {r pca, cache = TRUE, eval = F}
 pca <- prcomp(input_matrix)
 
 plot(pca)
