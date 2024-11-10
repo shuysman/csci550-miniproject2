@@ -1,13 +1,17 @@
 ```{r packages}
 library(GGally)
-library(visdat)
 library(janitor)
 library(corrplot)
 
 library(ggfortify) ## PCA Plots
 library(glmnet) ## Penalized Regression
-library(MASS)
+library(MASS) ## Step Selection
+library(MuMIn) ## Compare Model Performance
+library(caret)
+library(splines)
 library(tidyverse)
+
+set.seed(123)
 ```
 
 ```{r load-data}
