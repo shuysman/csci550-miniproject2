@@ -203,5 +203,93 @@ components$PC2 <- -components$PC2
 ggplot(house_prices, aes(x = building_square_feet, y = sale_price)) +
   geom_point()
 
-smooth <- smooth.spline(x = house_prices$building_square_feet, y = house_prices$sale_price, cv = F)
+### Generated with Claude 3.5 Sonnet
+cv_natural_spline <- function(data, response, predictor, df = 3, k = 5) {
+  # Create fold indices
+  set.seed(123)  # for reproducibility
+  folds <- createFolds(data[[response]], k = k, list = TRUE)
+  
+  # Store MSE for each fold
+  mse_values <- numeric(k)
+  
+  # Perform k-fold CV
+  for (i in seq_along(folds)) {
+    # Split data into training and test
+    test_indices <- folds[[i]]
+    train_data <- data[-test_indices, ]
+    test_data <- data[test_indices, ]
+    
+    # Fit natural spline on training data
+    formula <- as.formula(paste(response, "~ ns(", predictor, ", df =", df, ")"))
+    model <- lm(formula, data = train_data)
+    
+    # Make predictions on test data
+    predictions <- predict(model, newdata = test_data)
+    
+    # Calculate MSE for this fold
+    mse_values[i] <- mean((test_data[[response]] - predictions)^2)
+  }
+  
+  # Return results
+  list(
+    fold_mse = mse_values,
+    mean_mse = mean(mse_values),
+    sd_mse = sd(mse_values)
+  )
+}
+
+df_values <- 1:10
+results <- lapply(df_values, function(df) {
+  cv_result <- cv_natural_spline(data = house_prices, "sale_price", "building_square_feet", df = df)
+  c(df = df, mean_mse = cv_result$mean_mse)
+})
+
+# Convert results to data frame
+results_df <- data.frame(do.call(rbind, results))
+
+# Find best df
+best_df <- results_df$df[which.min(results_df$mean_mse)]
+
+# Fit final model with best df
+final_formula <- as.formula(paste("sale_price ~ ns(building_square_feet, df =", best_df, ")"))
+final_model <- lm(final_formula, data = house_prices)
+
+# Plot results
+plot(house_prices$building_square_feet, log(house_prices$sale_price), main = "Natural Spline Fit with Best df", 
+     xlab = "building_square_feet", ylab = "log(sale_price)", pch = 16, col = "gray")
+x_new <- seq(min(house_prices$building_square_feet), max(house_prices$building_square_feet), length.out = 100)
+pred <- log(predict(final_model, newdata = data.frame(building_square_feet = x_new)))
+lines(x_new, pred, col = "red", lwd = 2)
+
 ```
+
+
+# Compare model performance
+
+```{r model-performance}
+### AICc for glmnet models
+### https://stackoverflow.com/questions/63171921/is-there-a-way-in-r-to-determine-aic-from-cv-glmnet
+glmnet_cv_aicc <- function(fit, lambda = 'lambda.min'){
+  whlm <- which(fit$lambda == fit[[lambda]])
+  with(fit$glmnet.fit,
+       {
+         tLL <- nulldev - nulldev * (1 - dev.ratio)[whlm]
+         k <- df[whlm]
+         n <- nobs
+         return(list('AICc' = - tLL + 2 * k + 2 * k * (k + 1) / (n - k - 1),
+                     'BIC' = log(n) * k - tLL))
+       })
+}
+
+```
+
+
+| Model                                                                                                               | Formula                                       | AICc                                                    |
+|---------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|---------------------------------------------------------|
+| Baseline                                                                                                            | sale_price ~ building_square_feet             | `r AICc(baseline)`                                      |
+| Null                                                                                                                | sale_price ~ 1                                | `r AICc(null_model)`                                    |
+| Full                                                                                                                | sale_price ~ .                                | `r AICc(full_model)`                                    |
+| Step fit (forward selection)                                                                                        | `r formula(step_fit)`                         | `r AICc(step_fit)`                                      |
+| Lasso                                                                                                               |                                               | `r glmnet_cv_aicc(lasso.cv)$AICc`                     | |
+| | Ridge                        |                                               |  `r glmnet_cv_aicc(ridge.cv)$AICc` |                                               |                                                         |
+| Spline                                                                                                              | sale_price ~ ns(building_square_feet, df = 5) | `r AICc(final_model)`                                   |
