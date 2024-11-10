@@ -179,6 +179,8 @@ plot(lasso.cv$glmnet.fit)
 
 coef(lasso.cv, s = "lambda.min")
 
+## Lambda min
+lasso.cv$lambda.min
 
 ridge.cv <- cv.glmnet(x = input_matrix,
                       y = house_prices$sale_price,
@@ -191,6 +193,9 @@ plot(ridge.cv)
 plot(ridge.cv$glmnet.fit)
 
 coef(ridge.cv, s = "lambda.min")
+
+## Lambda min
+ridge.cv$lambda.min
 ```
 
 
