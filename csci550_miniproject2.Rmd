@@ -106,20 +106,25 @@ house_prices <- house_prices %>%
 input_matrix <- model.matrix(sale_price ~ -1 + ., data = house_prices)
 ```
 
-```{r eda, eval = F}
-house_prices %>%
-  select(-census_tract, -town_and_neighborhood) %>%
-  ggpairs()
+```{r eda, cache = TRUE}
+for (var in c("building_square_feet", "lot_size", "estimate_land", "estimate_building", "age")) {
+  print(var)
+  plot <- ggplot(house_prices, aes(x = .data[[var]], y = log(sale_price))) +
+    geom_point() +
+    ggtitle(paste(var, "vs log Sale Price")) 
+  print(plot)
+}
 
+ggplot(house_prices, aes(x = town_and_neighborhood, y = log(sale_price))) +
+  geom_boxplot() +
+  ggtitle("Town and Neighborhood vs log Sale Price")
+
+ggplot(house_prices, aes(x = property_class, y = log(sale_price))) +
+  geom_boxplot() +
+  ggtitle("Property Class vs log Sale Price")
 
 M <- cor(select_if(house_prices, is.numeric))
 corrplot(M)
-
-select_if(house_prices, is.numeric) %>%
-  ggpairs()
-
-select_if(house_prices, is.factor) %>%
-  ggpairs()
 
 summary(house_prices) %>%
   knitr::kable()
