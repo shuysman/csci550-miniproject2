@@ -266,7 +266,7 @@ best_df <- results_df$df[which.min(results_df$mean_mse)]
 
 # Fit final model with best df
 final_formula <- as.formula(paste("sale_price ~ ns(building_square_feet, df =", best_df, ")"))
-final_model <- lm(final_formula, data = house_prices)
+(final_model <- lm(final_formula, data = house_prices))
 
 # Plot results
 plot(house_prices$building_square_feet, log(house_prices$sale_price), main = "Natural Spline Fit with Best df", 
@@ -298,12 +298,12 @@ glmnet_cv_aicc <- function(fit, lambda = 'lambda.min'){
 ```
 
 
-| Model                                                                                                               | Formula                                       | AICc                                                    |
-|---------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|---------------------------------------------------------|
-| Baseline                                                                                                            | sale_price ~ building_square_feet             | `r AICc(baseline)`                                      |
-| Null                                                                                                                | sale_price ~ 1                                | `r AICc(null_model)`                                    |
-| Full                                                                                                                | sale_price ~ .                                | `r AICc(full_model)`                                    |
-| Step fit (forward selection)                                                                                        | `r formula(step_fit)`                         | `r AICc(step_fit)`                                      |
-| Lasso                                                                                                               |                                               | `r glmnet_cv_aicc(lasso.cv)$AICc`                     | |
-| | Ridge                        |                                               |  `r glmnet_cv_aicc(ridge.cv)$AICc` |                                               |                                                         |
-| Spline                                                                                                              | sale_price ~ ns(building_square_feet, df = 5) | `r AICc(final_model)`                                   |
+| Model                        | Formula                                                                                                                      | AICc                              |
+|------------------------------|------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
+| Baseline                     | sale_price ~ building_square_feet                                                                                            | `r AICc(baseline)`                |
+| Null                         | sale_price ~ 1                                                                                                               | `r AICc(null_model)`              |
+| Full                         | sale_price ~ .                                                                                                               | `r AICc(full_model)`              |
+| Step fit (forward selection) | sale_price ~ estimate_building + town_and_neighborhood + building_square_feet +	multi_property_indicator + property_class | `r AICc(step_fit)`                |
+| Lasso                        |                                                                                                                              | `r glmnet_cv_aicc(lasso.cv)$AICc` |
+| Ridge                        |                                                                                                                              | `r glmnet_cv_aicc(ridge.cv)$AICc` |
+| Spline                       | sale_price ~ ns(building_square_feet, df = 5)                                                                                | `r AICc(final_model)`             |
