@@ -181,6 +181,7 @@ coef(lasso.cv, s = "lambda.min")
 
 ## Lambda min
 lasso.cv$lambda.min
+lasso.cv$lambda.1se
 
 ridge.cv <- cv.glmnet(x = input_matrix,
                       y = house_prices$sale_price,
@@ -196,6 +197,8 @@ coef(ridge.cv, s = "lambda.min")
 
 ## Lambda min
 ridge.cv$lambda.min
+ridge.cv$lambda.1se
+
 ```
 
 
@@ -223,9 +226,10 @@ components$PC3 <- -components$PC3
 components$PC2 <- -components$PC2
 ```
 
-```{r non-linear}
-ggplot(house_prices, aes(x = building_square_feet, y = sale_price)) +
-  geom_point()
+```{r natural-spline}
+ggplot(house_prices, aes(x = building_square_feet, y = log(sale_price))) +
+  geom_point() +
+  ggtitle("Building square feet vs log(sale_price)")
 
 ### Generated with Claude 3.5 Sonnet
 cv_natural_spline <- function(data, response, predictor, df = 3, k = 5) {
@@ -287,6 +291,178 @@ lines(x_new, pred, col = "red", lwd = 2)
 
 ```
 
+``` {r polynomial}
+
+# Function to perform CV for polynomial regression
+### Generated with Claude 3.5 Sonnet
+cv_polynomial <- function(data, response, predictor, max_degree = 10, k = 5) {
+  # Create fold indices
+  set.seed(123)  # for reproducibility
+  folds <- createFolds(data[[response]], k = k, list = TRUE)
+  
+  # Store results for each degree
+  results <- data.frame(
+    degree = 1:max_degree,
+    mean_mse = NA,
+    sd_mse = NA
+  )
+  
+  # Test each polynomial degree
+  for (degree in 1:max_degree) {
+    mse_values <- numeric(k)
+    
+    # Perform k-fold CV
+    for (i in seq_along(folds)) {
+      # Split data into training and test
+      test_indices <- folds[[i]]
+      train_data <- data[-test_indices, ]
+      test_data <- data[test_indices, ]
+      
+      # Create polynomial terms
+      poly_formula <- as.formula(
+        paste(response, "~ poly(", predictor, ", degree =", degree, ", raw = TRUE)")
+      )
+      
+      # Fit model
+      model <- lm(poly_formula, data = train_data)
+      
+      # Make predictions
+      predictions <- predict(model, newdata = test_data)
+      
+      # Calculate MSE for this fold
+      mse_values[i] <- mean((test_data[[response]] - predictions)^2)
+    }
+    
+    # Store results for this degree
+    results$mean_mse[degree] <- mean(mse_values)
+    results$sd_mse[degree] <- sd(mse_values)
+  }
+  
+  return(results)
+}
+
+# Perform cross-validation
+cv_results <- cv_polynomial(house_prices, "sale_price", "building_square_feet", max_degree = 10)
+
+# Find best degree
+best_degree <- which.min(cv_results$mean_mse)
+
+# Fit final model with best degree
+final_formula <- as.formula(
+  paste("sale_price ~ poly(building_square_feet, degree =", best_degree, ", raw = TRUE)")
+)
+final_model <- lm(final_formula, data = house_prices)
+
+# Create plots
+# 1. Cross-validation results
+cv_plot <- ggplot(cv_results, aes(x = degree, y = mean_mse)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = mean_mse - sd_mse, 
+                    ymax = mean_mse + sd_mse),
+                width = 0.2) +
+  geom_vline(xintercept = best_degree, linetype = "dashed", color = "red") +
+  labs(title = "Cross-validation Results by Polynomial Degree",
+       x = "Polynomial Degree",
+       y = "Mean Square Error") +
+  theme_minimal()
+
+# 2. Final fit plot
+grid_x <- seq(min(house_prices$building_square_feet), max(house_prices$building_square_feet), length.out = 200)
+grid_data <- data.frame(building_square_feet = grid_x)
+predictions <- predict(final_model, newdata = grid_data)
+
+fit_plot <- ggplot() +
+  geom_point(data = house_prices, aes(x = building_square_feet, y = log(sale_price)), alpha = 0.5) +
+  geom_line(data = data.frame(x = grid_x, y = log(predictions)),
+            aes(x = x, y = y), color = "red", size = 1) +
+  labs(title = paste("Best Polynomial Fit (Degree =", best_degree, ")"),
+       x = "x",
+       y = "y") +
+  theme_minimal()
+
+# Print results
+print("Cross-validation results:")
+print(cv_results)
+print(paste("\nBest polynomial degree:", best_degree))
+print("\nSummary of final model:")
+print(summary(final_model))
+
+# Display plots
+print(cv_plot)
+print(fit_plot)
+
+```
+
+``` {r smooth-spline}
+# Function to perform CV for smooth splines
+# Generated with Claude 3.5 Sonnet
+cv_smooth_spline <- function(data, response, predictor, spar = NULL, k = 5) {
+  # Create fold indices
+  set.seed(123)  # for reproducibility
+  folds <- createFolds(data[[response]], k = k, list = TRUE)
+  
+  # Store MSE for each fold
+  mse_values <- numeric(k)
+  
+  # Perform k-fold CV
+  for (i in seq_along(folds)) {
+    # Split data into training and test
+    test_indices <- folds[[i]]
+    train_data <- data[-test_indices, ]
+    test_data <- data[test_indices, ]
+    
+    # Fit smooth spline on training data
+    model <- smooth.spline(
+      x = train_data[[predictor]], 
+      y = train_data[[response]],
+      spar = spar  # NULL means GCV is used to select smoothing parameter
+    )
+    
+    # Make predictions on test data
+    predictions <- predict(model, test_data[[predictor]])$y
+    
+    # Calculate MSE for this fold
+    mse_values[i] <- mean((test_data[[response]] - predictions)^2)
+  }
+  
+  # Return results
+  list(
+    fold_mse = mse_values,
+    mean_mse = mean(mse_values),
+    sd_mse = sd(mse_values),
+    spar = spar
+  )
+}
+
+# Try different smoothing parameters
+spar_values <- c(0.3, 0.5, 0.7, 0.9, 0.99, NULL)  # NULL means use GCV
+results <- lapply(spar_values, function(spar) {
+  cv_result <- cv_smooth_spline(house_prices, "sale_price", "building_square_feet", spar = spar)
+  c(spar = if(is.null(spar)) "GCV" else spar, 
+    mean_mse = cv_result$mean_mse)
+})
+
+# Convert results to data frame
+results_df <- data.frame(do.call(rbind, results))
+
+# Find best spar value
+best_result <- results_df[which.min(results_df$mean_mse), ]
+best_spar <- if(best_result$spar == "GCV") NULL else as.numeric(best_result$spar)
+
+# Fit final model with best smoothing parameter
+smooth_model <- smooth.spline(house_prices$building_square_feet, log(house_prices$sale_price), spar = best_spar)
+
+# Plot results
+plot(house_prices$building_square_feet, log(house_prices$sale_price), main = paste("Smooth Spline Fit with", 
+                       if(is.null(best_spar)) "GCV" else paste("spar =", best_spar)), 
+     xlab = "x", ylab = "y", pch = 16, col = "gray")
+lines(smooth_model, col = "red", lwd = 2)
+
+# Print cross-validation results
+print(results_df)
+
+```
 
 # Compare model performance
 
@@ -300,20 +476,54 @@ glmnet_cv_aicc <- function(fit, lambda = 'lambda.min'){
          tLL <- nulldev - nulldev * (1 - dev.ratio)[whlm]
          k <- df[whlm]
          n <- nobs
-         return(list('AICc' = - tLL + 2 * k + 2 * k * (k + 1) / (n - k - 1),
+         return(list('AIC' = -2 * tLL + 2 * k,
                      'BIC' = log(n) * k - tLL))
        })
+}
+
+## aic for smooth spline, generated by Claude 3.5 Sonnet
+get_smooth_spline_aicc <- function(fit) {
+  # Get number of observations
+  n <- length(fit$x)
+  
+  # Get effective degrees of freedom
+  df <- fit$df
+  
+  # Get residual sum of squares
+  rss <- sum((fit$y - fit$yin)^2)
+  
+  # Calculate sigma^2 (error variance)
+  sigma2 <- rss / (n - df)
+  
+  # Calculate log-likelihood (assuming Gaussian errors)
+  loglik <- -n/2 * log(2 * pi * sigma2) - rss/(2 * sigma2)
+  
+  # Calculate AIC
+  aic <- -2 * loglik + 2 * df
+  
+  # Calculate AICc (corrected for small sample size)
+  aicc <- aic + (2 * df * (df + 1))/(n - df - 1)
+  
+  return(list(
+    AIC = aic,
+    AICc = aicc,
+    df = df,
+    n = n,
+    RSS = rss,
+    loglik = loglik
+  ))
 }
 
 ```
 
 
-| Model                        | Formula                                                                                                                      | AICc                              |
+| Model                        | Formula                                                                                                                      | AIC                              |
 |------------------------------|------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| Baseline                     | sale_price ~ building_square_feet                                                                                            | `r AICc(baseline)`                |
-| Null                         | sale_price ~ 1                                                                                                               | `r AICc(null_model)`              |
-| Full                         | sale_price ~ .                                                                                                               | `r AICc(full_model)`              |
-| Step fit (forward selection) | sale_price ~ estimate_building + town_and_neighborhood + building_square_feet +	multi_property_indicator + property_class | `r AICc(step_fit)`                |
-| Lasso                        |                                                                                                                              | `r glmnet_cv_aicc(lasso.cv)$AICc` |
-| Ridge                        |                                                                                                                              | `r glmnet_cv_aicc(ridge.cv)$AICc` |
-| Spline                       | sale_price ~ ns(building_square_feet, df = 5)                                                                                | `r AICc(final_model)`             |
+| Baseline                     | sale_price ~ building_square_feet                                                                                            | `r AIC(baseline)`                |
+| Null                         | sale_price ~ 1                                                                                                               | `r AIC(null_model)`              |
+| Full                         | sale_price ~ .                                                                                                               | `r AIC(full_model)`              |
+| Step fit (forward selection) | sale_price ~ estimate_building + town_and_neighborhood + building_square_feet +	multi_property_indicator + property_class | `r AIC(step_fit)`                |
+| Lasso                        |                                                                                                                              | `r glmnet_cv_aicc(lasso.cv)$AIC` |
+| Ridge                        |                                                                                                                              | `r glmnet_cv_aicc(ridge.cv)$AIC` |
+| Smooth Spline                | sale_price ~ smooth.spline(building_square_feet, spar = .99                                                                                | `r get_smooth_spline_aicc(smooth_model)$AIC`             |
+| Polynomial                | sale_price ~ poly(building_square_feet, 4)                                                                              | `r AIC(poly_fit)`             |
