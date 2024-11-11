@@ -205,7 +205,7 @@ ridge.cv$lambda.1se
 
 # PCA
 
-``` {r pca, cache = TRUE, eval = F}
+``` {r pca}
 pca <- prcomp(input_matrix, scale. = TRUE)
 
 autoplot(pca,
