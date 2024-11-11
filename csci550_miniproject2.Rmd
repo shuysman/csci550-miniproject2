@@ -9,6 +9,7 @@ library(MASS) ## Step Selection
 library(MuMIn) ## Compare Model Performance
 library(caret)
 library(splines)
+library(factoextra)
 library(tidyverse)
 
 set.seed(123)
@@ -205,25 +206,18 @@ ridge.cv$lambda.1se
 # PCA
 
 ``` {r pca, cache = TRUE, eval = F}
-pca <- prcomp(input_matrix)
-
-plot(pca)
+pca <- prcomp(input_matrix, scale. = TRUE)
 
 autoplot(pca,
          data = house_prices,
-         color = "property_class",
+         color = "age",
          loadings = TRUE,
          loadings.color = "blue",
          loadings.label = TRUE,
-         loadings.label.size = 5)
+         loadings.label.size = 2) +
+  guides(col="none")
 
-components <- pca[["x"]]
-
-components <- data.frame(components)
-
-components$PC3 <- -components$PC3
-
-components$PC2 <- -components$PC2
+fviz_eig(pca)
 ```
 
 ```{r natural-spline}
