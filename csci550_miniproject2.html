@@ -9,9 +9,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Stephen Huysman, Connor Nelle, Bryan Portillo, Behzad Karimi" />
 
 
-<title>csci550_miniproject2.knit</title>
+<title>CSCI 550 Advanced Data Mining miniproject2</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -348,9 +349,27 @@ display: none;
 
 
 
+<h1 class="title toc-ignore">CSCI 550 Advanced Data Mining
+miniproject2</h1>
+<h4 class="author">Stephen Huysman, Connor Nelle, Bryan Portillo, Behzad
+Karimi</h4>
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#linear-models" id="toc-linear-models">Linear
+Models</a></li>
+<li><a href="#subset-selection" id="toc-subset-selection">Subset
+Selection</a></li>
+<li><a href="#l_1l_2-regularized-regression" id="toc-l_1l_2-regularized-regression">L_1/L_2 Regularized
+Regression</a></li>
+<li><a href="#pca" id="toc-pca">PCA</a></li>
+<li><a href="#non-linear-models" id="toc-non-linear-models">Non-linear
+models</a></li>
+<li><a href="#compare-model-performance" id="toc-compare-model-performance">Compare model performance</a></li>
+</ul>
+</div>
 
 <pre class="r"><code>library(GGally)
 library(janitor)
@@ -362,6 +381,7 @@ library(MASS) ## Step Selection
 library(MuMIn) ## Compare Model Performance
 library(caret)
 library(splines)
+library(factoextra)
 library(tidyverse)
 
 set.seed(123)</code></pre>
@@ -948,6 +968,8 @@ corrplot(M)</code></pre>
 </tr>
 </tbody>
 </table>
+<div id="linear-models" class="section level1">
+<h1>Linear Models</h1>
 <pre class="r"><code>baseline &lt;- lm(sale_price ~ building_square_feet, data = house_prices)
 
 summary(baseline)</code></pre>
@@ -970,7 +992,8 @@ summary(baseline)</code></pre>
 ## Multiple R-squared:  0.3461, Adjusted R-squared:  0.3461 
 ## F-statistic: 8.825e+04 on 1 and 166741 DF,  p-value: &lt; 2.2e-16</code></pre>
 <pre class="r"><code>null_model &lt;- lm(sale_price ~ 1, data = house_prices)</code></pre>
-<pre class="r"><code>full_model &lt;- lm(sale_price ~ ., data = house_prices)
+<pre class="r"><code>## This takes a very long time to run, so save it to disk.  The file takes ~2.6 GB
+full_model &lt;- lm(sale_price ~ ., data = house_prices)
 saveRDS(full_model, &quot;full_model.RDS&quot;)</code></pre>
 <pre class="r"><code>full_model &lt;- readRDS(&quot;full_model.RDS&quot;)
 summary(full_model)</code></pre>
@@ -1991,9 +2014,11 @@ summary(full_model)</code></pre>
 ## Residual standard error: 222500 on 164668 degrees of freedom
 ## Multiple R-squared:  0.6434, Adjusted R-squared:  0.6389 
 ## F-statistic: 143.2 on 2074 and 164668 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
 <div id="subset-selection" class="section level1">
 <h1>Subset Selection</h1>
 <pre class="r"><code>## Code below used to generate forward step fit
+## This takes forever to run without limited steps.  So we had to limit to 5 steps and save to disk.  The RDS file takes ~1GB
 step_fit &lt;- stepAIC(null_model,  scope = list(lower = null_model, upper = full_model), direction = &quot;forward&quot;, steps = 5)
 saveRDS(step_fit, &quot;step_fit.RDS&quot;)</code></pre>
 <pre class="r"><code>## Load cached step fit model
@@ -7276,25 +7301,22 @@ ridge.cv$lambda.min</code></pre>
 </div>
 <div id="pca" class="section level1">
 <h1>PCA</h1>
-<pre class="r"><code>pca &lt;- prcomp(input_matrix)
-
-plot(pca)
+<pre class="r"><code># Takes ages to run
+pca &lt;- prcomp(input_matrix, scale. = TRUE)
 
 autoplot(pca,
          data = house_prices,
-         color = &quot;property_class&quot;,
+         color = &quot;age&quot;,
          loadings = TRUE,
          loadings.color = &quot;blue&quot;,
          loadings.label = TRUE,
-         loadings.label.size = 5)
+         loadings.label.size = 2) +
+  guides(col=&quot;none&quot;)
 
-components &lt;- pca[[&quot;x&quot;]]
-
-components &lt;- data.frame(components)
-
-components$PC3 &lt;- -components$PC3
-
-components$PC2 &lt;- -components$PC2</code></pre>
+fviz_eig(pca)</code></pre>
+</div>
+<div id="non-linear-models" class="section level1">
+<h1>Non-linear models</h1>
 <pre class="r"><code>ggplot(house_prices, aes(x = building_square_feet, y = log(sale_price))) +
   geom_point() +
   ggtitle(&quot;Building square feet vs log(sale_price)&quot;)</code></pre>
