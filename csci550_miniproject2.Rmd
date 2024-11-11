@@ -131,7 +131,7 @@ summary(house_prices) %>%
   knitr::kable()
 ```
 
-
+# Linear Models
 ```{r linear-models}
 
 baseline <- lm(sale_price ~ building_square_feet, data = house_prices)
@@ -142,6 +142,7 @@ null_model <- lm(sale_price ~ 1, data = house_prices)
 ```
 
 ```{r full_model, eval = F}
+## This takes a very long time to run, so save it to disk.  The file takes ~2.6 GB
 full_model <- lm(sale_price ~ ., data = house_prices)
 saveRDS(full_model, "full_model.RDS")
 ```
@@ -154,6 +155,7 @@ summary(full_model)
 # Subset Selection
 ``` {r subset-selection, eval = F}
 ## Code below used to generate forward step fit
+## This takes forever to run without limited steps.  So we had to limit to 5 steps and save to disk.  The RDS file takes ~1GB
 step_fit <- stepAIC(null_model,  scope = list(lower = null_model, upper = full_model), direction = "forward", steps = 5)
 saveRDS(step_fit, "step_fit.RDS")
 ```
@@ -219,6 +221,8 @@ autoplot(pca,
 
 fviz_eig(pca)
 ```
+
+# Non-linear models
 
 ```{r natural-spline}
 ggplot(house_prices, aes(x = building_square_feet, y = log(sale_price))) +
